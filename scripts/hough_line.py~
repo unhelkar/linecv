@@ -81,7 +81,7 @@ class line_finder:
       print "%%%"
       print x1, y1
       print x2, y2 
-      print "Not Detected"
+      print "NOT Detected"
       return False
   
   def callback(self,data):
