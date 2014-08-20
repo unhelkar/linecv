@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<launch>
+	<node name="linecvFL" pkg="linecv" type="hough_line.py" output="screen" respawn="true" clear_params="true">
+		<remap from="inp_image" to="/opticFL/camera_image"/>
+		<remap from="oup_hough" to="/opticFL/hough_image"/>
+		<remap from="oup_canny" to="/opticFL/canny_image"/>
+		<remap from="oup_nline" to="/opticFL/nline"/>
+	</node>
+
+	<node name="linecvFR" pkg="linecv" type="hough_line.py" output="screen" respawn="true" clear_params="true">
+		<remap from="inp_image" to="/opticFR/camera_image"/>
+		<remap from="oup_hough" to="/opticFR/hough_image"/>
+		<remap from="oup_canny" to="/opticFR/canny_image"/>
+		<remap from="oup_nline" to="/opticFR/nline"/>
+	</node>
+
+	<node name="linecvBL" pkg="linecv" type="hough_line.py" output="screen" respawn="true" clear_params="true">
+		<remap from="inp_image" to="/opticBL/camera_image"/>
+		<remap from="oup_hough" to="/opticBL/hough_image"/>
+		<remap from="oup_canny" to="/opticBL/canny_image"/>
+		<remap from="oup_nline" to="/opticBL/nline"/>
+	</node>
+
+	<node name="linecvBR" pkg="linecv" type="hough_line.py" output="screen" respawn="true" clear_params="true">
+		<remap from="inp_image" to="/opticBR/camera_image"/>
+		<remap from="oup_hough" to="/opticBR/hough_image"/>
+		<remap from="oup_canny" to="/opticBR/canny_image"/>
+		<remap from="oup_nline" to="/opticBR/nline"/>
+	</node>
+</launch>

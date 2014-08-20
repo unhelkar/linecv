@@ -11,7 +11,7 @@ import rospy
 import cv2
 
 from rospy.numpy_msg import numpy_msg
-from std_msgs.msg import String
+from std_msgs.msg import String, Float64
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -20,27 +20,28 @@ class line_finder:
   def __init__(self):
 
     # parameters
-    self.cThresh1 = 220
-    self.cThresh2 = 255
-    self.cApertureSize = 3
+    self.cThresh1 = 140
+    self.cThresh2 = 180
+    self.cApertureSize = 4
 
     self.rho 	= 1
     self.theta 	= numpy.pi/180
 
-    self.houghThresh = 46
-    self.houghMinLen = 46
-    self.houghMaxGap = 10
+    self.houghThresh = 30
+    self.houghMinLen = 30
+    self.houghMaxGap = 5
 
     self.minAngle = math.radians(360)
     self.maxAngle = math.radians(0)
 
-    self.image_pub = rospy.Publisher("/linecv/mod_image",Image)
-    self.canny_pub = rospy.Publisher("/linecv/canny_image",Image)
+    self.image_pub = rospy.Publisher("oup_hough",Image)
+    self.canny_pub = rospy.Publisher("oup_canny",Image)
+    self.nline_pub = rospy.Publisher("oup_nline",Float64)
     rospy.init_node('line_finder', anonymous=True)
 
     cv2.namedWindow("Image window", 1)
     self.bridge = CvBridge()
-    self.image_sub = rospy.Subscriber("/px4flow/camera_image",Image,self.callback)
+    self.image_sub = rospy.Subscriber("inp_image",Image,self.callback)
 
   # reject diagonals beyond a certain angle
   def checkHoughs(self,x1,y1,x2,y2):
@@ -48,6 +49,8 @@ class line_finder:
     l = ( (x1-x2)**2 + (y1-y2)**2 )**0.5
     m = abs((y2-y1)/(x1-x2)) # slope
     angle = math.atan(m)
+    # print l
+    return True
 
     # rule based rejection of lines detected by Hough transform
     oneVertex = [0,0]
@@ -93,10 +96,15 @@ class line_finder:
       cv_gray = cv2.cvtColor(cv_image,cv2.COLOR_BGR2GRAY)
       cv_edges = cv2.Canny(cv_gray, self.cThresh1, self.cThresh2, 3) #apertureSize = self.cApertureSize)
       cv_lines = cv2.HoughLinesP(cv_edges, self.rho, self.theta, self.houghThresh, minLineLength = self.houghMinLen, maxLineGap = self.houghMaxGap)
+      num_line = 0
       if cv_lines is not None:
         for x1,y1,x2,y2 in cv_lines[0]:
           if self.checkHoughs(x1,y1,x2,y2):
+            num_line = num_line + 1 
             cv2.line(cv_image,(x1,y1),(x2,y2),(0,255,0),2)
+      if num_line > 0:
+        print "Line Detected" 
+ 
 
       # show image
       temp = cv_image.copy()
@@ -107,8 +115,8 @@ class line_finder:
       cv_out = cv2.resize(temp, (int(w), int(h)))
   
 
-      # cv_image = cv_edges
-      # cv2.imshow('houghlines',cv_edges)
+      #cv_image = cv_edges
+      #cv2.imshow('houghlines',cv_out)
 
     except CvBridgeError, e:
       cv2.destroyAllWindows()
@@ -123,6 +131,7 @@ class line_finder:
     try:
       self.canny_pub.publish(self.bridge.cv2_to_imgmsg(cv_out, "bgr8"))    # to see Canny edges
       self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))  # to see Detected lines
+      self.nline_pub.publish(num_line) # number of lines detected
     except CvBridgeError, e:
       print e
 

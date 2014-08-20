@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+	<node name="img_viewer_1" pkg="image_view" type="image_view" output="screen" respawn="true" clear_params="true">
+		<remap from="image" to="/$(arg opticXY)/camera_image"/>
+	</node>
+
+	<node name="img_viewer_2" pkg="image_view" type="image_view" output="screen" respawn="true" clear_params="true">
+		<remap from="image" to="/$(arg opticXY)/canny_image"/>
+	</node>
+
+	<node name="img_viewer_3" pkg="image_view" type="image_view" output="screen" respawn="true" clear_params="true">
+		<remap from="image" to="/$(arg opticXY)/hough_image"/>
+	</node>
+</launch>
