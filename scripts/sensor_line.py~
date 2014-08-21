@@ -9,6 +9,9 @@ import numpy
 
 from std_msgs.msg import String, Float64
 from linecv.msg import nline_xy
+from belt_sensing.msg import mergedOpticalFlow
+from belt_sensing.msg import sensorState
+from belt_sensing.msg import mergedSensorStates
 
 class SensorOnLine():
 	def __init__(self):
@@ -21,6 +24,8 @@ class SensorOnLine():
 		self.subFR = rospy.Subscriber("opticFR/nline", Float64, self.recordMeas, callback_args = 2)
 		self.subBL = rospy.Subscriber("opticBL/nline", Float64, self.recordMeas, callback_args = 3)
 		self.subBR = rospy.Subscriber("opticBR/nline", Float64, self.recordMeas, callback_args = 4)
+
+		self.subLoc = rospy.Subscriber("/sensing_data",  mergedSensorStates, callback)
 
 		self.lineXY   = nline_xy()
 
@@ -37,6 +42,8 @@ class SensorOnLine():
 		if callback_args == 4:
 			self.lineXY.hough[3] = msg.data
 
+	def recordLocl(self, msg, callback_args)
+
 	def run(self):
 		while not rospy.is_shutdown():
 			self.pub.publish(self.lineXY)
@@ -46,7 +53,6 @@ if __name__=="__main__":
 		try:
 			nlineXY_node = SensorOnLine()
 			nlineXY_node.run()
-			sleep 
 		except	rospy.ROSInterruptException:
 			pass
 		

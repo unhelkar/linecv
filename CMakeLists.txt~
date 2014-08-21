@@ -13,6 +13,15 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
 )
 
+## Generate messages
+add_message_files(FILES
+  nline_xy.msg
+ )
+
+generate_messages(
+  DEPENDENCIES std_msgs
+ )
+
 ## Declare a catkin package
 catkin_package() 
 
