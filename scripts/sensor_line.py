@@ -7,7 +7,7 @@ import time
 import math
 import numpy 
 
-from std_msgs.msg import String, Float64
+from std_msgs.msg import String, Float64, Float64MultiArray
 from linecv.msg import nline_xy
 from belt_sensing.msg import mergedOpticalFlow
 from belt_sensing.msg import sensorState
@@ -25,12 +25,17 @@ class SensorOnLine():
 		self.subBL = rospy.Subscriber("opticBL/nline", Float64, self.recordMeas, callback_args = 3)
 		self.subBR = rospy.Subscriber("opticBR/nline", Float64, self.recordMeas, callback_args = 4)
 
-		self.subLoc = rospy.Subscriber("/sensing_data",  mergedSensorStates, self.recordLocal)
+		self.subLoc = rospy.Subscriber("/optic_near_belt",  Float64MultiArray, self.recordLocal)
 
 		self.lineXY   = nline_xy()
+
+		self.lineXY.time   = rospy.Time.now()
+		self.lineXY.hough  = [0, 0, 0, 0]
+		self.lineXY.lclzn  = [0, 0, 0, 0]
+		self.lineXY.yhat   = [0, 0, 0, 0]
 
 	def recordMeas(self, msg, callback_args):
-		self.lineXY   = nline_xy()
+		#sielf.lineXY   = nline_xy()
 		self.lineXY.time = rospy.Time.now()
 
 		if callback_args == 1:
@@ -41,21 +46,15 @@ class SensorOnLine():
 			self.lineXY.hough[2] = msg.data
 		if callback_args == 4:
 			self.lineXY.hough[3] = msg.data
+
+		#print str(self.lineXY.lclzn)
+		for i in xrange(4):
+			self.lineXY.yhat[i] = self.lineXY.hough[i]*self.lineXY.lclzn[i]
+			#print str(i) #self.lineXY.yhat[i])
+
 
 	def recordLocal(self, msg):
-		self.lineXY   = nline_xy()
-		self.lineXY.time = rospy.Time.now()
-
-		if callback_args == 1:
-			self.lineXY.hough[0] = msg.data
-		if callback_args == 2:
-			self.lineXY.hough[1] = msg.data
-		if callback_args == 3:
-			self.lineXY.hough[2] = msg.data
-		if callback_args == 4:
-			self.lineXY.hough[3] = msg.data
-
-	def recordLocl(self, msg, callback_args)
+		self.lineXY.lclzn = msg.data 
 
 	def run(self):
 		while not rospy.is_shutdown():
