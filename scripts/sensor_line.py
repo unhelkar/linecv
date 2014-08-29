@@ -17,6 +17,7 @@ class SensorOnLine():
 	def __init__(self):
 		
 		self.pub = rospy.Publisher("sensor_line_XY", nline_xy)
+		self.pub_two = rospy.Publisher("sensor_cv_belt", Float64MultiArray)
 
 		rospy.init_node('sensorLineNode')
 
@@ -25,13 +26,15 @@ class SensorOnLine():
 		self.subBL = rospy.Subscriber("opticBL/nline", Float64, self.recordMeas, callback_args = 3)
 		self.subBR = rospy.Subscriber("opticBR/nline", Float64, self.recordMeas, callback_args = 4)
 
-		self.subLoc = rospy.Subscriber("/optic_near_belt",  Float64MultiArray, self.recordLocal)
+		self.subLoc   = rospy.Subscriber("/optic_near_belt",  Float64MultiArray, self.recordLocal)
+		self.subLocOn = rospy.Subscriber("/optic_on_belt",  Float64MultiArray, self.recordLocalOn)
 
 		self.lineXY   = nline_xy()
 
 		self.lineXY.time   = rospy.Time.now()
 		self.lineXY.hough  = [0, 0, 0, 0]
 		self.lineXY.lclzn  = [0, 0, 0, 0]
+		self.lclznOn  = [0, 0, 0, 0]
 		self.lineXY.yhat   = [0, 0, 0, 0]
 
 	def recordMeas(self, msg, callback_args):
@@ -49,16 +52,28 @@ class SensorOnLine():
 
 		#print str(self.lineXY.lclzn)
 		for i in xrange(4):
-			self.lineXY.yhat[i] = self.lineXY.hough[i]*self.lineXY.lclzn[i]
+			if self.lineXY.lclzn[i] < 0.1:
+				if self.lclznOn[i] > 0.1:
+					self.lineXY.yhat[i] = 1 # self.lineXY.yhat[i]
+				else:
+					self.lineXY.yhat[i] = 0
+			else:
+				if self.lineXY.yhat[i] > 0.1: # and self.lineXY.lclzn[i] > 0.1:
+					self.lineXY.yhat[i] = self.lineXY.yhat[i]
+				else:
+					self.lineXY.yhat[i] = self.lineXY.hough[i]*self.lineXY.lclzn[i]
 			#print str(i) #self.lineXY.yhat[i])
-
 
 	def recordLocal(self, msg):
 		self.lineXY.lclzn = msg.data 
 
+	def recordLocalOn(self, msg):
+		self.lclznOn = msg.data 
+
 	def run(self):
 		while not rospy.is_shutdown():
 			self.pub.publish(self.lineXY)
+			self.pub_two.publish(data= self.lineXY.yhat)
 			time.sleep(0.01)
 
 if __name__=="__main__":

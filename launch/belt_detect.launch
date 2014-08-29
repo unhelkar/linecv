@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+	<include file="$(find belt_sensing)/launch/belt_sensing.launch" >
+	</include>
+
+	<include file="$(find belt_sensing)/launch/belt_estimation.xml" >
+	</include>
+
+	<include file="$(find linecv)/launch/linecv.launch" >
+	</include>
+</launch>
