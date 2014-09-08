@@ -50,6 +50,7 @@ class line_finder:
     m = abs((y2-y1)/(x1-x2)) # slope
     angle = math.atan(m)
     # print l
+    print x1,x2,y1,y2,angle
     return True
 
     # rule based rejection of lines detected by Hough transform

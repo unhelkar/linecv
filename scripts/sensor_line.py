@@ -52,9 +52,9 @@ class SensorOnLine():
 
 		#print str(self.lineXY.lclzn)
 
-		tempSum = sum(self.lineXY.yhat)
-
 		for i in xrange(4):
+
+			tempSum = self.lineXY.yhat[i]
 			if abs(self.lineXY.lclzn[i]) < 0.1:
 				if self.lclznOn[i] > 0.1:
 					self.lineXY.yhat[i] = 1 # self.lineXY.yhat[i]
@@ -67,10 +67,12 @@ class SensorOnLine():
 					self.lineXY.yhat[i] = self.lineXY.hough[i] #*self.lineXY.lclzn[i]
 			#print str(i) #self.lineXY.yhat[i])
 
-			tempSumNew = sum(self.lineXY.yhat)
-			if tempSum != tempSumNew:
-				rospy.set_param('/fake_belt_node/belt_min',self.lineXY.lclzn[i])
-				print str(self.lineXY.lclzn[i])
+			tempSumNew = self.lineXY.yhat[i]
+			if tempSum != tempSumNew: # and self.lineXY.lclzn[i] > 0.1
+				rospy.set_param('/fake_belt_node/belt_min', self.lineXY.lclzn[i])
+				print str(i) + str(self.lineXY.yhat)
+				print str(self.lineXY.lclzn)
+
 			tempSum = tempSumNew
 
 	def recordLocal(self, msg):

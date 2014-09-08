@@ -6,6 +6,6 @@
 	<include file="$(find belt_sensing)/launch/belt_estimation.xml" >
 	</include>
 
-	<include file="$(find linecv)/launch/linecv.launch" >
-	</include>
+	<!--include file="$(find linecv)/launch/linecv.launch" >
+	</include-->
 </launch>

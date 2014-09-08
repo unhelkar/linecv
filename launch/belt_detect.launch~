@@ -8,7 +8,4 @@
 
 	<include file="$(find linecv)/launch/linecv.launch" >
 	</include>
-
-	<node name="sensor_line" type="sensor_line" pkg="linecv">
-	</node>
 </launch>
