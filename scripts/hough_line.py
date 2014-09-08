@@ -11,9 +11,10 @@ import rospy
 import cv2
 
 from rospy.numpy_msg import numpy_msg
-from std_msgs.msg import String, Float64
+from std_msgs.msg import String, Float64, Float64MultiArray
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+from linecv.msg import EqEdge
 
 class line_finder:
 
@@ -36,7 +37,8 @@ class line_finder:
 
     self.image_pub = rospy.Publisher("oup_hough",Image)
     self.canny_pub = rospy.Publisher("oup_canny",Image)
-    self.nline_pub = rospy.Publisher("oup_nline",Float64)
+    self.nline_pub = rospy.Publisher("oup_nline",EqEdge)
+
     rospy.init_node('line_finder', anonymous=True)
 
     cv2.namedWindow("Image window", 1)
@@ -47,10 +49,12 @@ class line_finder:
   def checkHoughs(self,x1,y1,x2,y2):
     # calculate line parameters
     l = ( (x1-x2)**2 + (y1-y2)**2 )**0.5
-    m = abs((y2-y1)/(x1-x2)) # slope
+    if x1 == x2:
+      m = 999999
+    else:
+      m = abs((y2-y1)/(x1-x2)) # slope
     angle = math.atan(m)
     # print l
-    print x1,x2,y1,y2,angle
     return True
 
     # rule based rejection of lines detected by Hough transform
@@ -98,11 +102,27 @@ class line_finder:
       cv_edges = cv2.Canny(cv_gray, self.cThresh1, self.cThresh2, 3) #apertureSize = self.cApertureSize)
       cv_lines = cv2.HoughLinesP(cv_edges, self.rho, self.theta, self.houghThresh, minLineLength = self.houghMinLen, maxLineGap = self.houghMaxGap)
       num_line = 0
+      mHough = []
+      cHough = []
+      cv2.line(cv_image,(32,32),(32,0),(255,0,0),2)
+      cv2.line(cv_image,(32,32),(64,32),(0,0,255),2)
       if cv_lines is not None:
         for x1,y1,x2,y2 in cv_lines[0]:
           if self.checkHoughs(x1,y1,x2,y2):
             num_line = num_line + 1 
+
+            if x1 == x2:
+              m = 999999.0
+            else:
+              m = -((float(32-y2)-float(32-y1))/(float(x1)-float(x2)))
+            c = -(float(-y2+32) - m*float(x2-32))
+            c = c*0.035/64.0
+
+            mHough.append(m)
+            cHough.append(c)
+
             cv2.line(cv_image,(x1,y1),(x2,y2),(0,255,0),2)
+
       if num_line > 0:
         print "Line Detected" 
  
@@ -129,10 +149,15 @@ class line_finder:
     # cv2.imshow("Image window", cv_edges)
     # cv2.waitKey(3)
 
+    eqn_edge = EqEdge()
+    eqn_edge.nline = num_line
+    eqn_edge.mline = mHough
+    eqn_edge.cline = cHough
+
     try:
       self.canny_pub.publish(self.bridge.cv2_to_imgmsg(cv_out, "bgr8"))    # to see Canny edges
       self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))  # to see Detected lines
-      self.nline_pub.publish(num_line) # number of lines detected
+      self.nline_pub.publish(eqn_edge) # number of lines detected
     except CvBridgeError, e:
       print e
 

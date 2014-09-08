@@ -27,4 +27,8 @@
 		<remap from="oup_canny" to="/opticBR/canny_image"/>
 		<remap from="oup_nline" to="/opticBR/nline"/>
 	</node>
+
+	<!-- publish the belt transform -->
+	<node name="sensor_line" pkg="linecv" type="sensor_line.py" output="screen" respawn="true">
+	</node>-->
 </launch>

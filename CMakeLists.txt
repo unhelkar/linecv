@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages
 add_message_files(FILES
   nline_xy.msg
+  EqEdge.msg
  )
 
 generate_messages(

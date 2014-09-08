@@ -8,7 +8,7 @@ import math
 import numpy 
 
 from std_msgs.msg import String, Float64, Float64MultiArray
-from linecv.msg import nline_xy
+from linecv.msg import nline_xy, EqEdge
 from belt_sensing.msg import mergedOpticalFlow
 from belt_sensing.msg import sensorState
 from belt_sensing.msg import mergedSensorStates
@@ -16,63 +16,101 @@ from belt_sensing.msg import mergedSensorStates
 class SensorOnLine():
 	def __init__(self):
 		
-		self.pub = rospy.Publisher("sensor_line_XY", nline_xy)
+		self.pub_one = rospy.Publisher("sensor_line_XY", nline_xy)
 		self.pub_two = rospy.Publisher("sensor_cv_belt", Float64MultiArray)
+		self.pub_thr = rospy.Publisher("optic_latest", Float64)
 
 		rospy.init_node('sensorLineNode')
 
-		self.subFL = rospy.Subscriber("opticFL/nline", Float64, self.recordMeas, callback_args = 1)
-		self.subFR = rospy.Subscriber("opticFR/nline", Float64, self.recordMeas, callback_args = 2)
-		self.subBL = rospy.Subscriber("opticBL/nline", Float64, self.recordMeas, callback_args = 3)
-		self.subBR = rospy.Subscriber("opticBR/nline", Float64, self.recordMeas, callback_args = 4)
+		self.subFL = rospy.Subscriber("opticFL/nline", EqEdge, self.recordMeas, callback_args = 1)
+		self.subFR = rospy.Subscriber("opticFR/nline", EqEdge, self.recordMeas, callback_args = 2)
+		self.subBL = rospy.Subscriber("opticBL/nline", EqEdge, self.recordMeas, callback_args = 3)
+		self.subBR = rospy.Subscriber("opticBR/nline", EqEdge, self.recordMeas, callback_args = 4)
 
 		self.subLoc   = rospy.Subscriber("/optic_near_belt",  Float64MultiArray, self.recordLocal)
 		self.subLocOn = rospy.Subscriber("/optic_on_belt",  Float64MultiArray, self.recordLocalOn)
+		self.subYaw   = rospy.Subscriber("/optic_yaw",  Float64MultiArray, self.recordYaw)
 
 		self.lineXY   = nline_xy()
 
 		self.lineXY.time   = rospy.Time.now()
 		self.lineXY.hough  = [0, 0, 0, 0]
 		self.lineXY.lclzn  = [0, 0, 0, 0]
-		self.lclznOn  = [0, 0, 0, 0]
+		self.yaw           = [0, 0, 0, 0]
+		self.lclznOn       = [0, 0, 0, 0]
 		self.lineXY.yhat   = [0, 0, 0, 0]
 
+		self.last_id = 0
+
 	def recordMeas(self, msg, callback_args):
-		#sielf.lineXY   = nline_xy()
+		old_belt_min = 0.62 #get_param('/surf_vel_pub/belt_min')
 		self.lineXY.time = rospy.Time.now()
 
-		if callback_args == 1:
-			self.lineXY.hough[0] = msg.data
-		if callback_args == 2:
-			self.lineXY.hough[1] = msg.data
-		if callback_args == 3:
-			self.lineXY.hough[2] = msg.data
-		if callback_args == 4:
-			self.lineXY.hough[3] = msg.data
+		optic_id  = callback_args - 1
+		optic_yaw = self.yaw[optic_id] + 1.57
 
-		#print str(self.lineXY.lclzn)
+		self.lineXY.hough[optic_id] = msg.nline
 
-		for i in xrange(4):
+		xcoeff = []
+		ycoeff = []
+		ccoeff = []
+		xo = []
+		yo = []
+		loc_belt = []
+		for i in xrange( int(msg.nline) ):
+			m = msg.mline[i]
+			c = msg.cline[i]
 
-			tempSum = self.lineXY.yhat[i]
-			if abs(self.lineXY.lclzn[i]) < 0.1:
-				if self.lclznOn[i] > 0.1:
+			# xcoeff*x + c = ycoeff*y
+			xcoeff.append( math.cos(optic_yaw)*m - math.sin(optic_yaw) )
+			ycoeff.append( math.sin(optic_yaw)*m + math.cos(optic_yaw) )
+			ccoeff.append( c )
+			xo.append( -ccoeff[i]/xcoeff[i] )
+			yo.append( +ccoeff[i]/ math.sqrt(m**2 + 1 ))
+
+			if abs(ycoeff[i]) < 20:
+				loc_belt.append( self.lineXY.lclzn[optic_id] + yo[i] )
+
+			if i == 0:
+				print str(self.lineXY.hough)
+				print str(self.lineXY.lclzn)
+				print "%%%%%%%%%%%"
+
+		if msg.nline != 0:
+			print str(xcoeff)
+			print str(ycoeff)
+			print str(ccoeff)
+		tempSum = sum(self.lineXY.yhat)
+
+		if self.lineXY.hough[optic_id] != 0 and self.lineXY.lclzn[optic_id] != 0:
+			print str(loc_belt)
+			if len(loc_belt) != 0 and max(loc_belt) != 0 and abs(old_belt_min - max(loc_belt)) < 0.03:
+				rospy.set_param('/surf_vel_pub/belt_min', max(loc_belt))
+				rospy.set_param('/optic_locn/belt_min', max(loc_belt))
+				self.last_id = optic_id
+
+
+		# additional code
+		for i in xrange(0): #4):
+			if abs(self.lineXY.lclzn[i]) == 0:
+				if self.lclznOn[i] == 1:
 					self.lineXY.yhat[i] = 1 # self.lineXY.yhat[i]
 				else:
 					self.lineXY.yhat[i] = 0
 			else:
-				if self.lineXY.yhat[i] > 0.1: # and self.lineXY.lclzn[i] > 0.1:
+				if self.lineXY.yhat[i] != 0: # and self.lineXY.lclzn[i] > 0.1:
 					self.lineXY.yhat[i] = self.lineXY.yhat[i]
 				else:
 					self.lineXY.yhat[i] = self.lineXY.hough[i] #*self.lineXY.lclzn[i]
-			#print str(i) #self.lineXY.yhat[i])
 
-			tempSumNew = self.lineXY.yhat[i]
+			tempSumNew = sum(self.lineXY.yhat)
 			if tempSum != tempSumNew:
-				rospy.set_param('/fake_belt_node/belt_min', self.lineXY.lclzn[i])
-				print str(i) + str(self.lineXY.yhat)
-				print str(self.lineXY.lclzn)
-
+				loc_belt.append(self.lineXY.lclzn[i])
+				#rospy.set_param('/fake_belt_node/belt_min', max(loc_belt))
+				print str(loc_belt)
+				print str(xcoeff)
+				print str(ycoeff)
+				print str(ccoeff)
 			tempSum = tempSumNew
 
 	def recordLocal(self, msg):
@@ -81,10 +119,14 @@ class SensorOnLine():
 	def recordLocalOn(self, msg):
 		self.lclznOn = msg.data 
 
+	def recordYaw(self, msg):
+		self.yaw = msg.data 
+
 	def run(self):
 		while not rospy.is_shutdown():
-			self.pub.publish(self.lineXY)
+			self.pub_one.publish(self.lineXY)
 			self.pub_two.publish(data= self.lineXY.yhat)
+			self.pub_thr.publish( self.last_id)
 			time.sleep(0.01)
 
 if __name__=="__main__":
